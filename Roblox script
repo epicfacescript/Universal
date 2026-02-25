@@ -1,0 +1,417 @@
+--!strict
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- 重複削除
+local oldGui = PlayerGui:FindFirstChild("AwesomeHub")
+if oldGui then oldGui:Destroy() end
+
+-- スクリーンGUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AwesomeHub"
+ScreenGui.Parent = PlayerGui
+ScreenGui.ResetOnSpawn = false
+
+-- メインフレーム
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 550, 0, 350)
+MainFrame.Position = UDim2.new(0.5, -275, 0.5, -175)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = MainFrame
+
+-- 開くボタン (Open Button)
+local OpenButton = Instance.new("TextButton")
+OpenButton.Name = "OpenButton"
+OpenButton.Size = UDim2.new(0, 60, 0, 60)
+OpenButton.Position = UDim2.new(0.5, -30, 0.5, -30)
+OpenButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+OpenButton.Text = "Open"
+OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenButton.Font = Enum.Font.GothamBold
+OpenButton.TextSize = 14
+OpenButton.Visible = false
+OpenButton.Active = true
+OpenButton.Parent = ScreenGui
+
+local OpenCorner = Instance.new("UICorner")
+OpenCorner.CornerRadius = UDim.new(1, 0)
+OpenCorner.Parent = OpenButton
+
+-- タイトル
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Name = "TitleLabel"
+TitleLabel.Size = UDim2.new(0, 250, 0, 50)
+TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "Universal Roblox script"
+TitleLabel.TextColor3 = Color3.fromRGB(0, 190, 255)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 20
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = MainFrame
+
+-- 閉じるボタン (X)
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Size = UDim2.new(0, 35, 0, 35)
+CloseButton.Position = UDim2.new(1, -45, 0, 10)
+CloseButton.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.TextSize = 18
+CloseButton.Parent = MainFrame
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 8)
+CloseCorner.Parent = CloseButton
+
+-- 最小化ボタン (-) 黄色
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Name = "MinimizeButton"
+MinimizeButton.Size = UDim2.new(0, 35, 0, 35)
+MinimizeButton.Position = UDim2.new(1, -85, 0, 10)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+MinimizeButton.Text = "-"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.Font = Enum.Font.GothamBold
+MinimizeButton.TextSize = 24
+MinimizeButton.Parent = MainFrame
+
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(0, 8)
+MinCorner.Parent = MinimizeButton
+
+-- サイドバー (スクロール可能に修正)
+local Sidebar = Instance.new("ScrollingFrame")
+Sidebar.Name = "Sidebar"
+Sidebar.Size = UDim2.new(0, 150, 1, -60)
+Sidebar.Position = UDim2.new(0, 10, 0, 50)
+Sidebar.BackgroundTransparency = 1
+Sidebar.ScrollBarThickness = 2
+Sidebar.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
+Sidebar.CanvasSize = UDim2.new(0, 0, 0, 400) -- タブが増えてもスクロール可能
+Sidebar.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 6)
+UIListLayout.Parent = Sidebar
+
+-- コンテンツエリア
+local Container = Instance.new("Frame")
+Container.Name = "Container"
+Container.Size = UDim2.new(1, -180, 1, -60)
+Container.Position = UDim2.new(0, 170, 0, 50)
+Container.BackgroundTransparency = 1
+Container.Parent = MainFrame
+
+-- 各タブのページ管理
+local Pages = {}
+local function createPage(name)
+	local page = Instance.new("ScrollingFrame")
+	page.Name = name .. "Page"
+	page.Size = UDim2.new(1, 0, 1, 0)
+	page.BackgroundTransparency = 1
+	page.Visible = false
+	page.ScrollBarThickness = 2
+	page.CanvasSize = UDim2.new(0, 0, 0, 1000)
+	page.Parent = Container
+	Pages[name] = page
+	local pageList = Instance.new("UIListLayout")
+	pageList.Padding = UDim.new(0, 10)
+	pageList.Parent = page
+	return page
+end
+
+-- タブ切り替え
+local TabButtons = {}
+local function switchTab(name)
+	for tabName, page in pairs(Pages) do page.Visible = (tabName == name) end
+	for tabName, btn in pairs(TabButtons) do
+		btn.BackgroundColor3 = (tabName == name) and Color3.fromRGB(0, 190, 255) or Color3.fromRGB(30, 30, 30)
+	end
+end
+
+local function createTabBtn(name)
+	local btn = Instance.new("TextButton")
+	btn.Name = name .. "Tab"
+	btn.Size = UDim2.new(1, -5, 0, 35) -- スクロールバーに被らないよう少し幅を調整
+	btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	btn.Text = name
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 10
+	btn.Parent = Sidebar
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 6)
+	btnCorner.Parent = btn
+	TabButtons[name] = btn
+	btn.MouseButton1Click:Connect(function() switchTab(name) end)
+end
+
+-- 実行ボタン作成
+local function createExecBtn(parent, text, scriptStr, isSpecial)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, -10, 0, 40)
+	btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	btn.Text = text
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 14
+	btn.Parent = parent
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = btn
+	btn.MouseButton1Click:Connect(function()
+		if isSpecial then
+			loadstring(game:HttpGet(scriptStr, true))()
+		else
+			loadstring(game:HttpGet(scriptStr))()
+		end
+	end)
+end
+
+-- タブとページの作成
+local FreeGamepassPage = createPage("free gamepass script")
+local WallHopPage = createPage("no Shift wall hop script")
+local DexPage = createPage("dex++ script")
+local BaconLockPage = createPage("bacon lock")
+local FreeChatPage = createPage("free chat script")
+local BloxFruitPage = createPage("Blox Fruit script")
+local ScriptPage = createPage("99 script")
+local SettingsPage = createPage("Settings")
+
+-- タブボタン作成
+createTabBtn("free gamepass script")
+createTabBtn("no Shift wall hop script")
+createTabBtn("dex++ script")
+createTabBtn("bacon lock")
+createTabBtn("free chat script")
+createTabBtn("Blox Fruit script")
+createTabBtn("99 script")
+createTabBtn("Settings")
+
+-- 実行ボタンの追加
+createExecBtn(FreeGamepassPage, "script executor", "https://raw.githubusercontent.com/BaconBossScript/Crazy/main/Crazy", true)
+createExecBtn(WallHopPage, "script executor", "https://raw.githubusercontent.com/giobolqvi1/walhooopppp-updated/refs/heads/main/obfuscated_script-1769293480750.lua.txt")
+createExecBtn(DexPage, "script executor", "https://github.com/AZYsGithub/DexPlusPlus/releases/latest/download/out.lua")
+createExecBtn(BaconLockPage, "tsb script executor", "https://pastes.io/raw/untitled-1326")
+createExecBtn(FreeChatPage, "script executor", "https://raw.githubusercontent.com/LolnotaKid/WaitWhatThisScriptExisted/refs/heads/main/ScriptForChattings")
+createExecBtn(BloxFruitPage, "script executor", "https://raw.githubusercontent.com/huy384/redzHub/refs/heads/main/redzHub.lua")
+createExecBtn(ScriptPage, "script executor", "https://raw.githubusercontent.com/VapeVoidware/VW-Add/main/loader.lua", true)
+
+-- Settings
+local function addSectionLabel(parent, text)
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, -10, 0, 35)
+	frame.BackgroundTransparency = 1
+	frame.Parent = parent
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Text = "--- " .. text .. " ---"
+	label.TextColor3 = Color3.fromRGB(200, 200, 200)
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 15
+	label.Parent = frame
+end
+
+addSectionLabel(SettingsPage, "Background Color")
+local bgColors = {
+	{name = "Purple", color = Color3.fromRGB(130, 50, 200)},
+	{name = "Black", color = Color3.fromRGB(15, 15, 15)},
+	{name = "White", color = Color3.fromRGB(240, 240, 240)},
+	{name = "Cyan", color = Color3.fromRGB(0, 220, 255)}
+}
+for _, data in ipairs(bgColors) do
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, -10, 0, 35)
+	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	frame.Parent = SettingsPage
+	local fCorner = Instance.new("UICorner")
+	fCorner.CornerRadius = UDim.new(0, 6)
+	fCorner.Parent = frame
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.6, 0, 1, 0)
+	label.Position = UDim2.new(0, 10, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Text = data.name
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 13
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = frame
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0, 60, 0, 22)
+	btn.Position = UDim2.new(1, -70, 0.5, -11)
+	btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	btn.Text = "Select"
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 11
+	btn.Parent = frame
+	local bCorner = Instance.new("UICorner")
+	bCorner.CornerRadius = UDim.new(0, 5)
+	bCorner.Parent = btn
+	btn.MouseButton1Click:Connect(function() MainFrame.BackgroundColor3 = data.color end)
+end
+
+local spacer = Instance.new("Frame")
+spacer.Size = UDim2.new(1, 0, 0, 15)
+spacer.BackgroundTransparency = 1
+spacer.Parent = SettingsPage
+
+addSectionLabel(SettingsPage, "Text Color")
+local textColors = {
+	{name = "Purple", color = Color3.fromRGB(180, 100, 255)},
+	{name = "Cyan", color = Color3.fromRGB(0, 220, 255)},
+	{name = "White", color = Color3.fromRGB(255, 255, 255)},
+	{name = "Yellow", color = Color3.fromRGB(255, 255, 0)},
+	{name = "Red", color = Color3.fromRGB(255, 80, 80)}
+}
+for _, data in ipairs(textColors) do
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, -10, 0, 35)
+	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	frame.Parent = SettingsPage
+	local fCorner = Instance.new("UICorner")
+	fCorner.CornerRadius = UDim.new(0, 6)
+	fCorner.Parent = frame
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.6, 0, 1, 0)
+	label.Position = UDim2.new(0, 10, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Text = data.name
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 13
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = frame
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0, 60, 0, 22)
+	btn.Position = UDim2.new(1, -70, 0.5, -11)
+	btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	btn.Text = "Select"
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 11
+	btn.Parent = frame
+	local bCorner = Instance.new("UICorner")
+	bCorner.CornerRadius = UDim.new(0, 5)
+	bCorner.Parent = btn
+	btn.MouseButton1Click:Connect(function()
+		TitleLabel.TextColor3 = data.color
+		for _, obj in pairs(MainFrame:GetDescendants()) do
+			if obj:IsA("TextLabel") and obj.Name ~= "TitleLabel" then obj.TextColor3 = data.color end
+		end
+	end)
+end
+
+-- アニメーション関連
+local isMinimized = false
+local originalSize = MainFrame.Size
+local originalPos = MainFrame.Position
+
+local function closeHub()
+	local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+	local closeTween = TweenService:Create(MainFrame, tweenInfo, {Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 1})
+	for _, child in pairs(MainFrame:GetDescendants()) do
+		if child:IsA("GuiObject") then
+			TweenService:Create(child, tweenInfo, {BackgroundTransparency = 1}):Play()
+			if child:IsA("TextLabel") or child:IsA("TextButton") then TweenService:Create(child, tweenInfo, {TextTransparency = 1}):Play() end
+		end
+	end
+	closeTween:Play()
+	closeTween.Completed:Connect(function()
+		MainFrame.Visible = false
+		OpenButton.Visible = true
+		OpenButton.Size = UDim2.new(0, 0, 0, 0)
+		TweenService:Create(OpenButton, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 60, 0, 60)}):Play()
+	end)
+end
+
+local function openHub()
+	MainFrame.Visible = true
+	isMinimized = false
+	local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+	local hideOpen = TweenService:Create(OpenButton, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)})
+	hideOpen:Play()
+	hideOpen.Completed:Connect(function() OpenButton.Visible = false end)
+	
+	MainFrame.Size = UDim2.new(0, 0, 0, 0)
+	MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+	MainFrame.BackgroundTransparency = 0
+	
+	local openTween = TweenService:Create(MainFrame, tweenInfo, {Size = originalSize, Position = originalPos})
+	
+	for _, child in pairs(MainFrame:GetDescendants()) do
+		if child:IsA("GuiObject") then
+			local targetTrans = 0
+			if child:IsA("ScrollingFrame") or child.Name == "Sidebar" or child.Name == "Container" or child.Name == "TitleLabel" then
+				targetTrans = 1
+			end
+			
+			child.BackgroundTransparency = 1
+			TweenService:Create(child, tweenInfo, {BackgroundTransparency = targetTrans}):Play()
+			
+			if child:IsA("TextLabel") or child:IsA("TextButton") then 
+				child.TextTransparency = 1
+				TweenService:Create(child, tweenInfo, {TextTransparency = 0}):Play() 
+			end
+		end
+	end
+	openTween:Play()
+end
+
+-- 最小化アニメーション
+local function toggleMinimize()
+	local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+	if not isMinimized then
+		isMinimized = true
+		originalPos = MainFrame.Position
+		local targetPos = UDim2.new(originalPos.X.Scale, originalPos.X.Offset, 0, -300)
+		TweenService:Create(MainFrame, tweenInfo, {Position = targetPos}):Play()
+	else
+		isMinimized = false
+		TweenService:Create(MainFrame, tweenInfo, {Position = originalPos}):Play()
+	end
+end
+
+CloseButton.MouseButton1Click:Connect(closeHub)
+OpenButton.MouseButton1Click:Connect(openHub)
+MinimizeButton.MouseButton1Click:Connect(toggleMinimize)
+
+-- ドラッグ機能
+local function makeDraggable(frame)
+	local dragging, dragInput, dragStart, startPos
+	frame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true; dragStart = input.Position; startPos = frame.Position
+			input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+		end
+	end)
+	frame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - dragStart
+			local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			frame.Position = newPos
+			if not isMinimized then originalPos = newPos end
+		end
+	end)
+end
+makeDraggable(MainFrame)
+makeDraggable(OpenButton)
+switchTab("free gamepass script")
